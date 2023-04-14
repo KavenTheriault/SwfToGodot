@@ -1,0 +1,9 @@
+<component name="libraryTable">
+  <library name="ffdec_lib">
+    <CLASSES>
+      <root url="jar://$PROJECT_DIR$/../../../../Program Files (x86)/FFDec/lib/ffdec_lib.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES />
+  </library>
+</component>
