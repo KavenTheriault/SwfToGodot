@@ -57,7 +57,7 @@ public class Main {
         ArrayList<GodotSprite> sceneSprites = new ArrayList<>();
 
         for (ExportImageResult exportImageResult : exportImageResults) {
-            var translation = getTranslationNeededInGodot(foundSprite.getRect(), exportImageResult.getExportRect());
+            var translation = getTranslationNeededInGodot(exportImageResult.getExportRect());
 
             GodotSprite godotSprite = new GodotSprite(
                     String.format("%s", exportImageResult.getCharacterId()),
@@ -113,12 +113,10 @@ public class Main {
         }
     }
 
-    static Point2D.Double getTranslationNeededInGodot(RECT parentRect, RECT childRect) {
-        var centerSpriteTranslation = GraphUtils.getCenteringTranslation(parentRect);
-
-        var childRectDestination = centerSpriteTranslation.transform(new ExportRectangle(childRect));
+    static Point2D.Double getTranslationNeededInGodot(RECT childRect) {
+        var childRectDestination = new ExportRectangle(childRect);
         var centerChildTranslation = GraphUtils.getCenteringTranslation(childRect);
-        var childRectOrigin = centerChildTranslation.transform(new ExportRectangle(childRect));
+        var childRectOrigin = centerChildTranslation.transform(childRectDestination);
         var resultTranslation = GraphUtils.getTranslation(new Point2D.Double(childRectDestination.xMin, childRectDestination.yMin), new Point2D.Double(childRectOrigin.xMin, childRectOrigin.yMin));
 
         return new Point2D.Double(GraphUtils.twipToPixel(resultTranslation.translateX * ZOOM), GraphUtils.twipToPixel(resultTranslation.translateY * ZOOM));
