@@ -20,16 +20,38 @@ import java.util.ArrayList;
 public class Main {
     static int ZOOM = 4;
     static String SWF_FILE_PATH = "C:\\Users\\ZoidQC\\Downloads\\sloche-res\\client\\sloche2007.swf";
+    static String RESOURCE_FOLDER_PATH = "C:\\Users\\ZoidQC\\Documents\\projects\\Sloche";
 
     public static void main(String[] args) {
         try (FileInputStream fis = new FileInputStream(SWF_FILE_PATH)) {
             SWF swf = new SWF(fis, true);
 
-            var foundSprite = TagUtils.getSprite(swf, 855);
+            var spriteId = 855;
+            var foundSprite = TagUtils.getSprite(swf, spriteId);
 
-            var childrenRect = exportSpritePlaceObjects(foundSprite);
-            var translations = getTranslationNeededInGodot(foundSprite.getRect(), childrenRect);
-            System.out.println("Translations: " + translations);
+            String spriteFolderPath = String.format("%s\\%s", RESOURCE_FOLDER_PATH, spriteId);
+            File folder = new File(spriteFolderPath);
+            if (!folder.exists()) {
+                folder.mkdir();
+            }
+
+            var exportImageResults = exportSpritePlaceObjects(foundSprite, spriteFolderPath);
+            ArrayList<GodotSprite> sceneSprites = new ArrayList<>();
+
+            for (ExportImageResult exportImageResult : exportImageResults) {
+                var translation = getTranslationNeededInGodot(foundSprite.getRect(), exportImageResult.getExportRect());
+
+                GodotSprite godotSprite = new GodotSprite(
+                        String.format("%s", exportImageResult.getCharacterId()),
+                        String.format("res://%s/%s", spriteId, exportImageResult.getFileName()),
+                        translation,
+                        0
+                );
+                sceneSprites.add(godotSprite);
+            }
+
+            var godotFileWriter = new GodotFileWriter();
+            godotFileWriter.writeScene(String.format("%s\\%s.tscn", spriteFolderPath, spriteId), sceneSprites);
 
             System.out.println("OK");
         } catch (SwfOpenException ex) {
@@ -43,22 +65,22 @@ public class Main {
         }
     }
 
-
-
-    static ArrayList<RECT> exportSpritePlaceObjects(DefineSpriteTag sprite) throws Exception {
-        var childrenRect = new ArrayList<RECT>();
+    static ArrayList<ExportImageResult> exportSpritePlaceObjects(DefineSpriteTag sprite, String folderPath) throws Exception {
+        var exportImageResults = new ArrayList<ExportImageResult>();
 
         for (Tag spriteChildTag : sprite.getTags()) {
             if (spriteChildTag instanceof PlaceObject2Tag placeObject) {
-                var exportRect = exportSpritePlaceObject(sprite.getCharacterId(), placeObject.getCharacterId());
-                childrenRect.add(exportRect);
+                var fileName = String.format("%s.png", placeObject.getCharacterId());
+                var childImagePath = String.format("%s\\%s", folderPath, fileName);
+                var exportRect = exportSpritePlaceObject(sprite.getCharacterId(), placeObject.getCharacterId(), childImagePath);
+                exportImageResults.add(new ExportImageResult(placeObject.getCharacterId(), exportRect, fileName));
             }
         }
 
-        return childrenRect;
+        return exportImageResults;
     }
 
-    static RECT exportSpritePlaceObject(int spriteId, int placeObjectId) throws Exception {
+    static RECT exportSpritePlaceObject(int spriteId, int placeObjectId, String filePath) throws Exception {
         try (FileInputStream fis = new FileInputStream(SWF_FILE_PATH)) {
             SWF swf = new SWF(fis, true);
             var sprite = TagUtils.getSprite(swf, spriteId);
@@ -76,30 +98,22 @@ public class Main {
 
             Timeline timeline = sprite.getTimeline();
             BufferedImage bufferedImage = SWF.frameToImageGet(timeline, 0, 0, null, 0, timeline.displayRect, new Matrix(), null, null, ZOOM, true).getBufferedImage();
-            saveImageFile(bufferedImage, placeObjectId);
+
+            File file = new File(filePath);
+            ImageHelper.write(bufferedImage, ImageFormat.PNG, file);
 
             return timeline.displayRect;
         }
     }
-    static ArrayList<Point2D.Double> getTranslationNeededInGodot(RECT parentRect, ArrayList<RECT> childrenRect) {
+
+    static Point2D.Double getTranslationNeededInGodot(RECT parentRect, RECT childRect) {
         var centerSpriteTranslation = GraphUtils.getCenteringTranslation(parentRect);
 
-        var translationPoints = new ArrayList<Point2D.Double>();
-        for (RECT childRect : childrenRect) {
-            var childRectDestination = centerSpriteTranslation.transform(new ExportRectangle(childRect));
-            var centerChildTranslation = GraphUtils.getCenteringTranslation(childRect);
-            var childRectOrigin = centerChildTranslation.transform(new ExportRectangle(childRect));
-            var resultTranslation = GraphUtils.getTranslation(new Point2D.Double(childRectDestination.xMin, childRectDestination.yMin), new Point2D.Double(childRectOrigin.xMin, childRectOrigin.yMin));
-            var resultTranslationInPxAndZoomed = new Point2D.Double(GraphUtils.twipToPixel(resultTranslation.translateX * ZOOM), GraphUtils.twipToPixel(resultTranslation.translateY * ZOOM));
+        var childRectDestination = centerSpriteTranslation.transform(new ExportRectangle(childRect));
+        var centerChildTranslation = GraphUtils.getCenteringTranslation(childRect);
+        var childRectOrigin = centerChildTranslation.transform(new ExportRectangle(childRect));
+        var resultTranslation = GraphUtils.getTranslation(new Point2D.Double(childRectDestination.xMin, childRectDestination.yMin), new Point2D.Double(childRectOrigin.xMin, childRectOrigin.yMin));
 
-            translationPoints.add(resultTranslationInPxAndZoomed);
-        }
-
-        return translationPoints;
-    }
-
-    static void saveImageFile(BufferedImage bufferedImage, int id) throws IOException {
-        File file = new File(String.format("C:\\Users\\ZoidQC\\Documents\\sloche exports\\%s.png", id));
-        ImageHelper.write(bufferedImage, ImageFormat.PNG, file);
+        return new Point2D.Double(GraphUtils.twipToPixel(resultTranslation.translateX * ZOOM), GraphUtils.twipToPixel(resultTranslation.translateY * ZOOM));
     }
 }
