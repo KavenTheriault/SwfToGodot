@@ -86,8 +86,7 @@ public class Main {
             var shouldAddShader = exportImageResult.getName() != null && exportImageResult.getName().contains(spriteNameToAddShader);
 
             GodotSprite godotSprite = new GodotSprite(
-                    String.format("%s%s", exportImageResult.getCharacterId(),
-                            exportImageResult.getName() != null ? "_" + exportImageResult.getName() : ""),
+                    exportImageResult.getName(),
                     String.format("res://%s/%s/%s", containerFolderName, spriteId, exportImageResult.getFileName()),
                     translation,
                     shouldAddShader ? new ShaderOption(COLOR_SHADER_RESOURCE_PATH, COLOR_SHADER_PARAMETER) : null);
@@ -106,19 +105,15 @@ public class Main {
             var placeObject = findPlaceObjectResult.getPlaceObject();
             var parent = findPlaceObjectResult.getParent();
 
-            var fileName = String.format("%s.png", placeObject.getCharacterId());
+            String name = String.format("%s", placeObject.getCharacterId());
+            if (placeObject.name != null) name += "_" + placeObject.name;
+            if (parent != null && parent.name != null) name += "_" + parent.name;
+
+            var fileName = String.format("%s.png", name);
             var childImagePath = String.format("%s\\%s", folderPath, fileName);
             var exportRect = exportSpritePlaceObject(sprite.getCharacterId(), placeObject.getCharacterId(), childImagePath);
 
-            String name = placeObject.name;
-            if (parent != null && parent.name != null) {
-                name = parent.name;
-                if (placeObject.name != null) {
-                    name = String.format("%s_%s", parent.name, placeObject.name);
-                }
-            }
-
-            exportImageResults.add(new ExportImageResult(placeObject.getCharacterId(), exportRect, fileName, name));
+            exportImageResults.add(new ExportImageResult(exportRect, fileName, name));
         }
 
         return exportImageResults;
