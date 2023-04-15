@@ -1,8 +1,12 @@
+import godot.GodotNode;
+import godot.GodotResource;
+import godot.GodotSubResource;
+
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.util.AbstractMap;
 import java.util.ArrayList;
-import java.util.LinkedList;
 
 public class GodotFileWriter {
     private ArrayList<String> lines;
@@ -13,69 +17,74 @@ public class GodotFileWriter {
 
     private void writeLine(String line) {
         lines.add(line);
-        writeLine();
+        writeNewLine();
     }
 
-    private void writeLine() {
+    private void writeNewLine() {
         lines.add("\n");
     }
 
     public void writeScene(String filePath, ArrayList<GodotSprite> sprites) {
         RandomStringGenerator randomStringGenerator = new RandomStringGenerator();
 
-        var sceneUid = randomStringGenerator.randomString(13);
-        writeLine(String.format("[gd_scene load_steps=%s format=3 uid=\"uid://%s\"]", sprites.size() + 1, sceneUid));
-
-        writeLine();
-
-        var resourceIds = new ArrayList<String>();
-        var shaderMaterialIds = new LinkedList<String>();
+        var resources = new ArrayList<GodotResource>();
+        var subResources = new ArrayList<GodotSubResource>();
+        var nodes = new ArrayList<GodotNode>();
+        nodes.add(new GodotNode("Node2D", "Node2D", null, new ArrayList<>()));
 
         for (int i = 0; i < sprites.size(); i++) {
+            var sprite = sprites.get(i);
+            var nodeProperties = new ArrayList<AbstractMap.SimpleEntry<String, String>>();
+
             var resourceId = String.format("%s_%s", i + 1, randomStringGenerator.randomString(5));
-            resourceIds.add(resourceId);
-        }
-
-        for (int i = 0; i < sprites.size(); i++) {
-            var sprite = sprites.get(i);
-            var resourceId = resourceIds.get(i);
             var spriteUid = randomStringGenerator.randomString(13);
-
-            writeLine(String.format("[ext_resource type=\"Texture2D\" uid=\"uid://%s\" path=\"%s\" id=\"%s\"]", spriteUid, sprite.getResourcePath(), resourceId));
+            resources.add(new GodotResource(resourceId, "Texture2D", sprite.getResourcePath(), spriteUid));
 
             var shaderOption = sprite.getShaderOption();
             if (shaderOption != null) {
-                var shaderId = String.format("%s_%s", i + 1, randomStringGenerator.randomString(5));
-                var shaderMaterialId = String.format("ShaderMaterial_%s", randomStringGenerator.randomString(5));
-                shaderMaterialIds.add(shaderMaterialId);
+                var type = "ShaderMaterial";
+                var shaderResourceId = String.format("%s_%s", i + 1, randomStringGenerator.randomString(5));
+                var shaderMaterialId = String.format("%s_%s", type, randomStringGenerator.randomString(5));
 
-                writeLine(String.format("[ext_resource type=\"Shader\" path=\"%s\" id=\"%s\"]", shaderOption.getResourcePath(), shaderId));
+                resources.add(new GodotResource(shaderResourceId, "Shader", shaderOption.getResourcePath(), randomStringGenerator.randomString(13)));
 
-                writeLine();
+                var shaderProperties = new ArrayList<AbstractMap.SimpleEntry<String, String>>();
+                shaderProperties.add(new AbstractMap.SimpleEntry<>("shader", String.format("ExtResource(\"%s\")", shaderResourceId)));
+                shaderProperties.add(shaderOption.getParameter());
 
-                writeLine(String.format("[sub_resource type=\"ShaderMaterial\" id=\"%s\"]", shaderMaterialId));
-                writeLine(String.format("shader = ExtResource(\"%s\")", shaderId));
-                writeLine(shaderOption.getParameter());
+                subResources.add(new GodotSubResource(shaderMaterialId, type, shaderProperties));
+                nodeProperties.add(new AbstractMap.SimpleEntry<>("material", String.format("SubResource(\"%s\")", shaderMaterialId)));
             }
+
+            nodeProperties.add(new AbstractMap.SimpleEntry<>("position", String.format("Vector2(%s, %s)", sprite.getPosition().x, sprite.getPosition().y)));
+            nodeProperties.add(new AbstractMap.SimpleEntry<>("texture", String.format("ExtResource(\"%s\")", resourceId)));
+            nodes.add(new GodotNode(sprite.getName(), "Sprite2D", ".", nodeProperties));
         }
 
-        writeLine();
-        writeLine("[node name=\"Node2D\" type=\"Node2D\"]");
-        writeLine();
+        var sceneUid = randomStringGenerator.randomString(13);
+        writeLine(String.format("[gd_scene load_steps=%s format=3 uid=\"uid://%s\"]", nodes.size() + subResources.size() + 1, sceneUid));
+        writeNewLine();
 
-        for (int i = 0; i < sprites.size(); i++) {
-            var sprite = sprites.get(i);
-            var resourceId = resourceIds.get(i);
+        for (GodotResource resource : resources) {
+            writeLine(String.format("[ext_resource type=\"%s\" uid=\"uid://%s\" path=\"%s\" id=\"%s\"]", resource.getType(), resource.getUid(), resource.getPath(), resource.getId()));
+        }
+        writeNewLine();
 
-            writeLine(String.format("[node name=\"%s\" type=\"Sprite2D\" parent=\".\"]", sprite.getName()));
-            var shaderOption = sprite.getShaderOption();
-            if (shaderOption != null) {
-                var shaderMaterialId = shaderMaterialIds.getFirst();
-                writeLine(String.format("material = SubResource(\"%s\")", shaderMaterialId));
+        for (GodotSubResource subResource : subResources) {
+            writeLine(String.format("[sub_resource type=\"%s\" id=\"%s\"]", subResource.getType(), subResource.getId()));
+            for (var property : subResource.getProperties()) {
+                writeLine(String.format("%s = %s", property.getKey(), property.getValue()));
             }
-            writeLine(String.format("position = Vector2(%s, %s)", sprite.getPosition().x, sprite.getPosition().y));
-            writeLine(String.format("texture = ExtResource(\"%s\")", resourceId));
-            writeLine();
+            writeNewLine();
+        }
+
+        for (GodotNode node : nodes) {
+            var parent = node.getParent() != null ? String.format("parent=\"%s\"", node.getParent()) : "";
+            writeLine(String.format("[node name=\"%s\" type=\"%s\" %s]", node.getName(), node.getType(), parent));
+            for (var property : node.getProperties()) {
+                writeLine(String.format("%s = %s", property.getKey(), property.getValue()));
+            }
+            writeNewLine();
         }
 
         writeFile(filePath);

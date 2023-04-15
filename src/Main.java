@@ -15,6 +15,7 @@ import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
+import java.util.AbstractMap;
 import java.util.ArrayList;
 import java.util.Objects;
 
@@ -23,7 +24,7 @@ public class Main {
     static String SWF_FILE_PATH = "C:\\Users\\ZoidQC\\Downloads\\sloche-res\\client\\sloche2007.swf";
     static String RESOURCE_FOLDER_PATH = "C:\\Users\\ZoidQC\\Documents\\projects\\ExportTests";
     static String COLOR_SHADER_RESOURCE_PATH = "res://shaders/change_color.gdshader";
-    static String COLOR_SHADER_PARAMETER = "shader_parameter/color = Vector4(0.3, 0.79, 0.94, 1)";
+    static AbstractMap.SimpleEntry<String, String> COLOR_SHADER_PARAMETER = new AbstractMap.SimpleEntry<>("shader_parameter/color", "Vector4(0.3, 0.79, 0.94, 1)");
 
     public static void main(String[] args) {
         try (FileInputStream fis = new FileInputStream(SWF_FILE_PATH)) {

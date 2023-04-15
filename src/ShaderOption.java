@@ -1,5 +1,7 @@
+import java.util.AbstractMap;
+
 public class ShaderOption {
-    public ShaderOption(String resourcePath, String parameter) {
+    public ShaderOption(String resourcePath, AbstractMap.SimpleEntry<String, String> parameter) {
         this.resourcePath = resourcePath;
         this.parameter = parameter;
     }
@@ -8,18 +10,10 @@ public class ShaderOption {
         return resourcePath;
     }
 
-    public void setResourcePath(String resourcePath) {
-        this.resourcePath = resourcePath;
-    }
-
-    public String getParameter() {
+    public AbstractMap.SimpleEntry<String, String> getParameter() {
         return parameter;
     }
 
-    public void setParameter(String parameter) {
-        this.parameter = parameter;
-    }
-
     private String resourcePath;
-    private String parameter;
+    private AbstractMap.SimpleEntry<String, String> parameter;
 }
