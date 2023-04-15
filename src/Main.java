@@ -20,38 +20,17 @@ import java.util.ArrayList;
 public class Main {
     static int ZOOM = 4;
     static String SWF_FILE_PATH = "C:\\Users\\ZoidQC\\Downloads\\sloche-res\\client\\sloche2007.swf";
-    static String RESOURCE_FOLDER_PATH = "C:\\Users\\ZoidQC\\Documents\\projects\\Sloche";
+    static String RESOURCE_FOLDER_PATH = "C:\\Users\\ZoidQC\\Documents\\projects\\ExportTests";
 
     public static void main(String[] args) {
         try (FileInputStream fis = new FileInputStream(SWF_FILE_PATH)) {
             SWF swf = new SWF(fis, true);
 
-            var spriteId = 855;
-            var foundSprite = TagUtils.getSprite(swf, spriteId);
+            int[] spriteIds = {860, 883, 865, 828, 843, 880, 818, 833, 855, 870, 813, 838, 888, 808, 875, 848, 823, 893, 904, 911};
 
-            String spriteFolderPath = String.format("%s\\%s", RESOURCE_FOLDER_PATH, spriteId);
-            File folder = new File(spriteFolderPath);
-            if (!folder.exists()) {
-                folder.mkdir();
+            for (int spriteId : spriteIds) {
+                generateSpriteScene(swf, spriteId);
             }
-
-            var exportImageResults = exportSpritePlaceObjects(foundSprite, spriteFolderPath);
-            ArrayList<GodotSprite> sceneSprites = new ArrayList<>();
-
-            for (ExportImageResult exportImageResult : exportImageResults) {
-                var translation = getTranslationNeededInGodot(foundSprite.getRect(), exportImageResult.getExportRect());
-
-                GodotSprite godotSprite = new GodotSprite(
-                        String.format("%s", exportImageResult.getCharacterId()),
-                        String.format("res://%s/%s", spriteId, exportImageResult.getFileName()),
-                        translation,
-                        0
-                );
-                sceneSprites.add(godotSprite);
-            }
-
-            var godotFileWriter = new GodotFileWriter();
-            godotFileWriter.writeScene(String.format("%s\\%s.tscn", spriteFolderPath, spriteId), sceneSprites);
 
             System.out.println("OK");
         } catch (SwfOpenException ex) {
@@ -63,6 +42,34 @@ public class Main {
         } catch (Exception ex) {
             System.out.println("ERROR:" + ex);
         }
+    }
+
+    static void generateSpriteScene(SWF swf, int spriteId) throws Exception {
+        var foundSprite = TagUtils.getSprite(swf, spriteId);
+
+        String spriteFolderPath = String.format("%s\\%s", RESOURCE_FOLDER_PATH, spriteId);
+        File folder = new File(spriteFolderPath);
+        if (!folder.exists()) {
+            folder.mkdir();
+        }
+
+        var exportImageResults = exportSpritePlaceObjects(foundSprite, spriteFolderPath);
+        ArrayList<GodotSprite> sceneSprites = new ArrayList<>();
+
+        for (ExportImageResult exportImageResult : exportImageResults) {
+            var translation = getTranslationNeededInGodot(foundSprite.getRect(), exportImageResult.getExportRect());
+
+            GodotSprite godotSprite = new GodotSprite(
+                    String.format("%s", exportImageResult.getCharacterId()),
+                    String.format("res://%s/%s", spriteId, exportImageResult.getFileName()),
+                    translation,
+                    0
+            );
+            sceneSprites.add(godotSprite);
+        }
+
+        var godotFileWriter = new GodotFileWriter();
+        godotFileWriter.writeScene(String.format("%s\\%s.tscn", spriteFolderPath, spriteId), sceneSprites);
     }
 
     static ArrayList<ExportImageResult> exportSpritePlaceObjects(DefineSpriteTag sprite, String folderPath) throws Exception {
