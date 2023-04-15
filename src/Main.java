@@ -16,20 +16,23 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Objects;
 
 public class Main {
     static int ZOOM = 4;
     static String SWF_FILE_PATH = "C:\\Users\\ZoidQC\\Downloads\\sloche-res\\client\\sloche2007.swf";
     static String RESOURCE_FOLDER_PATH = "C:\\Users\\ZoidQC\\Documents\\projects\\ExportTests";
+    static String COLOR_SHADER_RESOURCE_PATH = "res://shaders/change_color.gdshader";
+    static String COLOR_SHADER_PARAMETER = "shader_parameter/color = Vector4(0.3, 0.79, 0.94, 1)";
 
     public static void main(String[] args) {
         try (FileInputStream fis = new FileInputStream(SWF_FILE_PATH)) {
             SWF swf = new SWF(fis, true);
 
-            int[] spriteIds = {860, 883, 865, 828, 843, 880, 818, 833, 855, 870, 813, 838, 888, 808, 875, 848, 823, 893, 904, 911};
+            int[] headSpriteIds = {860, 883, 865, 828, 843, 880, 818, 833, 855, 870, 813, 838, 888, 808, 875, 848, 823, 893, 904, 911};
 
-            for (int spriteId : spriteIds) {
-                generateSpriteScene(swf, spriteId);
+            for (int headSpriteId : headSpriteIds) {
+                generateSpriteScene(swf, headSpriteId);
             }
 
             System.out.println("OK");
@@ -60,10 +63,10 @@ public class Main {
             var translation = getTranslationNeededInGodot(exportImageResult.getExportRect());
 
             GodotSprite godotSprite = new GodotSprite(
-                    String.format("%s", exportImageResult.getCharacterId()),
+                    String.format("%s%s", exportImageResult.getCharacterId(), exportImageResult.getName() != null ? "_" + exportImageResult.getName() : ""),
                     String.format("res://%s/%s", spriteId, exportImageResult.getFileName()),
                     translation,
-                    0
+                    Objects.equals(exportImageResult.getName(), "hair") ? new ShaderOption(COLOR_SHADER_RESOURCE_PATH, COLOR_SHADER_PARAMETER) : null
             );
             sceneSprites.add(godotSprite);
         }
@@ -80,7 +83,7 @@ public class Main {
                 var fileName = String.format("%s.png", placeObject.getCharacterId());
                 var childImagePath = String.format("%s\\%s", folderPath, fileName);
                 var exportRect = exportSpritePlaceObject(sprite.getCharacterId(), placeObject.getCharacterId(), childImagePath);
-                exportImageResults.add(new ExportImageResult(placeObject.getCharacterId(), exportRect, fileName));
+                exportImageResults.add(new ExportImageResult(placeObject.getCharacterId(), exportRect, fileName, placeObject.name));
             }
         }
 
