@@ -1,16 +1,14 @@
-import com.jpexs.decompiler.flash.AbortRetryIgnoreHandler;
 import com.jpexs.decompiler.flash.SWF;
 import com.jpexs.decompiler.flash.SwfOpenException;
-import com.jpexs.decompiler.flash.exporters.FrameExporter;
 import com.jpexs.decompiler.flash.exporters.commonshape.ExportRectangle;
 import com.jpexs.decompiler.flash.exporters.commonshape.Matrix;
-import com.jpexs.decompiler.flash.exporters.modes.SpriteExportMode;
-import com.jpexs.decompiler.flash.exporters.settings.SpriteExportSettings;
 import com.jpexs.decompiler.flash.helpers.ImageHelper;
-import com.jpexs.decompiler.flash.tags.*;
+import com.jpexs.decompiler.flash.tags.DefineShapeTag;
+import com.jpexs.decompiler.flash.tags.DefineSpriteTag;
+import com.jpexs.decompiler.flash.tags.PlaceObject2Tag;
+import com.jpexs.decompiler.flash.tags.Tag;
 import com.jpexs.decompiler.flash.tags.base.RenderContext;
 import com.jpexs.decompiler.flash.tags.enums.ImageFormat;
-import com.jpexs.decompiler.flash.timeline.Frame;
 import com.jpexs.decompiler.flash.timeline.Timeline;
 import com.jpexs.decompiler.flash.types.CXFORMWITHALPHA;
 import com.jpexs.decompiler.flash.types.ColorTransform;
@@ -32,9 +30,9 @@ public class Main {
         try (FileInputStream fis = new FileInputStream(SWF_FILE_PATH)) {
             SWF swf = new SWF(fis, true);
 
-            var foundSprite = TagUtils.getSprite(swf, 855);
+            var foundSprite = TagUtils.getSprite(swf, 860);
 
-            secondTry(foundSprite);
+            thirdTry(foundSprite);
 
             System.out.println("OK");
         } catch (SwfOpenException ex) {
@@ -48,13 +46,61 @@ public class Main {
         }
     }
 
+    static RECT exportSpritePlaceObject(int spriteId, int placeObjectId) throws Exception {
+        try (FileInputStream fis = new FileInputStream(SWF_FILE_PATH)) {
+            SWF swf = new SWF(fis, true);
+            var sprite = TagUtils.getSprite(swf, spriteId);
+
+            ArrayList<Tag> tagsToRemove = new ArrayList<>();
+            for (Tag spriteChildTag : sprite.getTags()) {
+                if (spriteChildTag instanceof PlaceObject2Tag placeObject) {
+                    if (placeObject.getCharacterId() != placeObjectId) tagsToRemove.add(placeObject);
+                }
+            }
+
+            swf.removeTags(tagsToRemove, false, null);
+            swf.computeDependentCharacters();
+            swf.computeDependentFrames();
+
+            Timeline timeline = sprite.getTimeline();
+            BufferedImage bufferedImage = SWF.frameToImageGet(timeline, 0, 0, null, 0, timeline.displayRect, new Matrix(), null, null, ZOOM, true).getBufferedImage();
+            saveImageFile(bufferedImage, placeObjectId);
+
+            return timeline.displayRect;
+        }
+    }
+    static void thirdTry(DefineSpriteTag sprite) throws Exception {
+        var centerSpriteTranslation = GraphUtils.getCenteringTranslation(sprite.getRect());
+
+        for (Tag spriteChildTag : sprite.getTags()) {
+            if (spriteChildTag instanceof PlaceObject2Tag placeObject) {
+                var exportRect = exportSpritePlaceObject(sprite.getCharacterId(), placeObject.getCharacterId());
+                System.out.println("ID: " + placeObject.getCharacterId());
+                System.out.println("RECT: " + exportRect);
+
+                var childRectGoal = centerSpriteTranslation.transform(new ExportRectangle(exportRect));
+                var centerChildTranslation = GraphUtils.getCenteringTranslation(exportRect);
+                var childRectOrigin = centerChildTranslation.transform(new ExportRectangle(exportRect));
+                var bigResult = GraphUtils.getTranslation(new Point2D.Double(childRectGoal.xMin, childRectGoal.yMin), new Point2D.Double(childRectOrigin.xMin, childRectOrigin.yMin));
+
+                System.out.println("ChildRectGoal: " + childRectGoal);
+                System.out.println("CenterChildTranslation: " + centerChildTranslation);
+                System.out.println("ChildRectOrigin: " + childRectOrigin);
+                System.out.println("BigResult: " + bigResult);
+                System.out.println("BigResult PX: " + GraphUtils.twipToPixel(bigResult.translateX) + " " + GraphUtils.twipToPixel(bigResult.translateY));
+                System.out.println("BigResult PX and Zoom: " + GraphUtils.twipToPixel(bigResult.translateX * ZOOM) + " " + GraphUtils.twipToPixel(bigResult.translateY * ZOOM));
+            }
+        }
+    }
+
     static void secondTry(DefineSpriteTag mainSprite) throws IOException, InterruptedException {
         SWF swf = mainSprite.getSwf();
         ArrayList<Tag> tagsToRemove = new ArrayList<>();
 
         for (Tag spriteChildTag : mainSprite.getTags()) {
             if (spriteChildTag instanceof PlaceObject2Tag placeObject) {
-                if (placeObject.getCharacterId() == 852 || placeObject.getCharacterId() == 851) tagsToRemove.add(placeObject);
+                if (placeObject.getCharacterId() == 852 || placeObject.getCharacterId() == 851)
+                    tagsToRemove.add(placeObject);
             }
         }
 
