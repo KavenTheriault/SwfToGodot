@@ -31,9 +31,14 @@ public class Main {
             SWF swf = new SWF(fis, true);
 
             int[] headSpriteIds = {860, 883, 865, 828, 843, 880, 818, 833, 855, 870, 813, 838, 888, 808, 875, 848, 823, 893, 904, 911};
+            int[] bodySpriteIds = {605, 621, 631, 650, 673, 627, 642, 658, 677, 615, 666, 609, 648, 662, 668, 654, 635, 681, 900, 907};
 
             for (int headSpriteId : headSpriteIds) {
-                generateSpriteScene(swf, headSpriteId);
+                generateSpriteScene(swf, headSpriteId, "heads", "hair");
+            }
+
+            for (int bodySpriteId : bodySpriteIds) {
+                generateSpriteScene(swf, bodySpriteId, "bodies", "shirt");
             }
 
             System.out.println("OK");
@@ -48,13 +53,18 @@ public class Main {
         }
     }
 
-    static void generateSpriteScene(SWF swf, int spriteId) throws Exception {
+    static void generateSpriteScene(SWF swf, int spriteId, String containerFolderName, String spriteNameToAddShader) throws Exception {
         var foundSprite = TagUtils.getSprite(swf, spriteId);
 
-        String spriteFolderPath = String.format("%s\\%s", RESOURCE_FOLDER_PATH, spriteId);
-        File folder = new File(spriteFolderPath);
-        if (!folder.exists()) {
-            folder.mkdir();
+        String containerFolderPath = String.format("%s\\%s", RESOURCE_FOLDER_PATH, containerFolderName);
+        String spriteFolderPath = String.format("%s\\%s", containerFolderPath, spriteId);
+
+        String[] folderPaths = {containerFolderPath, spriteFolderPath};
+        for (String folderPath : folderPaths) {
+            File folder = new File(folderPath);
+            if (!folder.exists()) {
+                folder.mkdir();
+            }
         }
 
         var exportImageResults = exportSpritePlaceObjects(foundSprite, spriteFolderPath);
@@ -65,9 +75,9 @@ public class Main {
 
             GodotSprite godotSprite = new GodotSprite(
                     String.format("%s%s", exportImageResult.getCharacterId(), exportImageResult.getName() != null ? "_" + exportImageResult.getName() : ""),
-                    String.format("res://%s/%s", spriteId, exportImageResult.getFileName()),
+                    String.format("res://%s/%s/%s", containerFolderName, spriteId, exportImageResult.getFileName()),
                     translation,
-                    Objects.equals(exportImageResult.getName(), "hair") ? new ShaderOption(COLOR_SHADER_RESOURCE_PATH, COLOR_SHADER_PARAMETER) : null
+                    Objects.equals(exportImageResult.getName(), spriteNameToAddShader) ? new ShaderOption(COLOR_SHADER_RESOURCE_PATH, COLOR_SHADER_PARAMETER) : null
             );
             sceneSprites.add(godotSprite);
         }
