@@ -1,3 +1,5 @@
+package types;
+
 import com.jpexs.decompiler.flash.types.RECT;
 
 public class ExportImageResult {

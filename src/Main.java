@@ -9,7 +9,14 @@ import com.jpexs.decompiler.flash.tags.Tag;
 import com.jpexs.decompiler.flash.tags.enums.ImageFormat;
 import com.jpexs.decompiler.flash.timeline.Timeline;
 import com.jpexs.decompiler.flash.types.RECT;
+import godot.GodotWriter;
+import godot.GodotWriterItem;
+import godot.GodotWriterSprite;
+import godot.ShaderOption;
+import types.ExportImageResult;
 import types.TagTreeItem;
+import utils.GeoUtils;
+import utils.TagUtils;
 
 import java.awt.geom.Point2D;
 import java.awt.image.BufferedImage;
@@ -77,22 +84,22 @@ public class Main {
         var tagTreeItems = getTagTreeItems(sprite, true);
         var exportImageResults = exportAllPlaceObjectImage(sprite, tagTreeItems, spriteFolderPath);
 
-        ArrayList<GodotSprite> sceneSprites = new ArrayList<>();
+        ArrayList<GodotWriterItem> writerItems = new ArrayList<>();
 
         for (ExportImageResult exportImageResult : exportImageResults) {
             var translation = getTranslationNeededInGodot(exportImageResult.getExportRect());
             var shouldAddShader = exportImageResult.getName() != null && exportImageResult.getName().contains(spriteNameToAddShader);
 
-            GodotSprite godotSprite = new GodotSprite(
+            GodotWriterSprite godotWriterSprite = new GodotWriterSprite(
                     exportImageResult.getName(),
                     String.format("res://%s/%s/%s", containerFolderName, spriteId, exportImageResult.getFileName()),
                     translation,
                     shouldAddShader ? new ShaderOption(COLOR_SHADER_RESOURCE_PATH, COLOR_SHADER_PARAMETER) : null);
-            sceneSprites.add(godotSprite);
+            writerItems.add(godotWriterSprite);
         }
 
-        var godotFileWriter = new GodotFileWriter();
-        godotFileWriter.writeScene(String.format("%s\\%s.tscn", spriteFolderPath, spriteId), sceneSprites);
+        var godotFileWriter = new GodotWriter();
+        godotFileWriter.writeScene(String.format("%s\\%s.tscn", spriteFolderPath, spriteId), writerItems);
     }
 
     static ArrayList<ExportImageResult> exportAllPlaceObjectImage(DefineSpriteTag sprite, ArrayList<TagTreeItem> tagTreeItems, String folderPath) {
@@ -215,10 +222,10 @@ public class Main {
 
     static Point2D.Double getTranslationNeededInGodot(RECT childRect) {
         var childRectDestination = new ExportRectangle(childRect);
-        var centerChildTranslation = GraphUtils.getCenteringTranslation(childRect);
+        var centerChildTranslation = GeoUtils.getCenteringTranslation(childRect);
         var childRectOrigin = centerChildTranslation.transform(childRectDestination);
-        var resultTranslation = GraphUtils.getTranslation(new Point2D.Double(childRectDestination.xMin, childRectDestination.yMin), new Point2D.Double(childRectOrigin.xMin, childRectOrigin.yMin));
+        var resultTranslation = GeoUtils.getTranslation(new Point2D.Double(childRectDestination.xMin, childRectDestination.yMin), new Point2D.Double(childRectOrigin.xMin, childRectOrigin.yMin));
 
-        return new Point2D.Double(GraphUtils.twipToPixel(resultTranslation.translateX * ZOOM), GraphUtils.twipToPixel(resultTranslation.translateY * ZOOM));
+        return new Point2D.Double(GeoUtils.twipToPixel(resultTranslation.translateX * ZOOM), GeoUtils.twipToPixel(resultTranslation.translateY * ZOOM));
     }
 }

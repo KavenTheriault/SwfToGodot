@@ -1,3 +1,5 @@
+package godot;
+
 import java.util.AbstractMap;
 
 public class ShaderOption {

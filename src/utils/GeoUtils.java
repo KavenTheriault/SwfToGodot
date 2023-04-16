@@ -1,3 +1,5 @@
+package utils;
+
 import com.jpexs.decompiler.flash.SWF;
 import com.jpexs.decompiler.flash.exporters.commonshape.ExportRectangle;
 import com.jpexs.decompiler.flash.exporters.commonshape.Matrix;
@@ -5,7 +7,7 @@ import com.jpexs.decompiler.flash.types.RECT;
 
 import java.awt.geom.Point2D;
 
-public class GraphUtils {
+public class GeoUtils {
     public static Point2D.Double centerRect(RECT rect) {
         double centerX = (double) (rect.Xmax + rect.Xmin) / 2;
         double centerY = (double) (rect.Ymax + rect.Ymin) / 2;

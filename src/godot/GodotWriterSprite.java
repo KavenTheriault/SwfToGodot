@@ -1,13 +1,14 @@
+package godot;
+
 import java.awt.geom.Point2D;
 
-public class GodotSprite {
-    private String name;
+public class GodotWriterSprite extends GodotWriterItem {
     private String resourcePath;
     private Point2D.Double position;
     private ShaderOption shaderOption;
 
-    public GodotSprite(String name, String resourcePath, Point2D.Double position, ShaderOption shaderOption) {
-        this.name = name;
+    public GodotWriterSprite(String name, String resourcePath, Point2D.Double position, ShaderOption shaderOption) {
+        super(name);
         this.resourcePath = resourcePath;
         this.position = position;
         this.shaderOption = shaderOption;
@@ -21,11 +22,8 @@ public class GodotSprite {
         return position;
     }
 
-    public String getName() {
-        return name;
-    }
-
     public String getResourcePath() {
         return resourcePath;
     }
 }
+
