@@ -44,7 +44,7 @@ public class GodotWriter {
         for (var writerItem : writerItems) {
             if (writerItem instanceof GodotWriterSprite writerSprite) writeSprite(writerSprite, parent);
             if (writerItem instanceof GodotWriterGroup writerGroup) {
-                nodes.add(new GodotNode("Node2D", "Node2D", parent, new ArrayList<>()));
+                nodes.add(new GodotNode(writerGroup.getName(), "Node2D", parent, new ArrayList<>()));
                 writeItems(writerGroup.getItems(), writerGroup.getName());
             }
         }

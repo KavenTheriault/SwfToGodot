@@ -9,10 +9,7 @@ import com.jpexs.decompiler.flash.tags.Tag;
 import com.jpexs.decompiler.flash.tags.enums.ImageFormat;
 import com.jpexs.decompiler.flash.timeline.Timeline;
 import com.jpexs.decompiler.flash.types.RECT;
-import godot.GodotWriter;
-import godot.GodotWriterItem;
-import godot.GodotWriterSprite;
-import godot.ShaderOption;
+import godot.*;
 import types.ExportImageResult;
 import types.TagTreeItem;
 import utils.GeoUtils;
@@ -82,36 +79,36 @@ public class Main {
         }
 
         var tagTreeItems = getTagTreeItems(sprite, true);
-        var exportImageResults = exportAllPlaceObjectImage(sprite, tagTreeItems, spriteFolderPath);
-
-        ArrayList<GodotWriterItem> writerItems = new ArrayList<>();
-
-        for (ExportImageResult exportImageResult : exportImageResults) {
-            var translation = getTranslationNeededInGodot(exportImageResult.getExportRect());
-            var shouldAddShader = exportImageResult.getName() != null && exportImageResult.getName().contains(spriteNameToAddShader);
-
-            GodotWriterSprite godotWriterSprite = new GodotWriterSprite(
-                    exportImageResult.getName(),
-                    String.format("res://%s/%s/%s", containerFolderName, spriteId, exportImageResult.getFileName()),
-                    translation,
-                    shouldAddShader ? new ShaderOption(COLOR_SHADER_RESOURCE_PATH, COLOR_SHADER_PARAMETER) : null);
-            writerItems.add(godotWriterSprite);
-        }
 
         var godotFileWriter = new GodotWriter();
-        godotFileWriter.writeScene(String.format("%s\\%s.tscn", spriteFolderPath, spriteId), writerItems);
+        var godotWriteItems = buildGodotWriterItems(sprite, tagTreeItems, spriteFolderPath, containerFolderName, spriteNameToAddShader);
+
+        godotFileWriter.writeScene(String.format("%s\\%s.tscn", spriteFolderPath, spriteId), godotWriteItems);
     }
 
-    static ArrayList<ExportImageResult> exportAllPlaceObjectImage(DefineSpriteTag sprite, ArrayList<TagTreeItem> tagTreeItems, String folderPath) {
-        var result = new ArrayList<ExportImageResult>();
+    static ArrayList<GodotWriterItem> buildGodotWriterItems(DefineSpriteTag sprite, ArrayList<TagTreeItem> tagTreeItems, String folderPath, String containerFolderName, String spriteNameToAddShader) {
+        var result = new ArrayList<GodotWriterItem>();
         for (TagTreeItem tagTreeItem : tagTreeItems) {
             if (tagTreeItem.getChildren() != null) {
-                result.addAll(exportAllPlaceObjectImage(sprite, tagTreeItem.getChildren(), folderPath));
+                var godotWriteGroup = new GodotWriterGroup(tagTreeItem.getTag().name);
+                godotWriteGroup.getItems().addAll(buildGodotWriterItems(sprite, tagTreeItem.getChildren(), folderPath, containerFolderName, spriteNameToAddShader));
+                result.add(godotWriteGroup);
             } else {
-                result.add(exportPlaceObjectImage(sprite, tagTreeItem, folderPath));
+                var exportImageResult = exportPlaceObjectImage(sprite, tagTreeItem, folderPath);
+                result.add(buildGodotWriterSprite(exportImageResult, sprite.getCharacterId(), containerFolderName, spriteNameToAddShader));
             }
         }
         return result;
+    }
+
+    static GodotWriterSprite buildGodotWriterSprite(ExportImageResult exportImageResult, int spriteId, String containerFolderName, String spriteNameToAddShader) {
+        var translation = getTranslationNeededInGodot(exportImageResult.getExportRect());
+        var shouldAddShader = exportImageResult.getName() != null && exportImageResult.getName().contains(spriteNameToAddShader);
+        return new GodotWriterSprite(
+                exportImageResult.getName(),
+                String.format("res://%s/%s/%s", containerFolderName, spriteId, exportImageResult.getFileName()),
+                translation,
+                shouldAddShader ? new ShaderOption(COLOR_SHADER_RESOURCE_PATH, COLOR_SHADER_PARAMETER) : null);
     }
 
     static ExportImageResult exportPlaceObjectImage(DefineSpriteTag sprite, TagTreeItem tagTreeItem, String folderPath) {
