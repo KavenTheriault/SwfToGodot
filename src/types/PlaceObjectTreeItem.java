@@ -2,11 +2,11 @@ package types;
 
 import com.jpexs.decompiler.flash.tags.PlaceObject2Tag;
 
-public class FindPlaceObjectResult {
+public class PlaceObjectTreeItem {
     private PlaceObject2Tag placeObject;
     private PlaceObject2Tag parent;
 
-    public FindPlaceObjectResult(PlaceObject2Tag placeObject) {
+    public PlaceObjectTreeItem(PlaceObject2Tag placeObject) {
         this.placeObject = placeObject;
     }
 
@@ -24,5 +24,11 @@ public class FindPlaceObjectResult {
 
     public void setParent(PlaceObject2Tag parent) {
         this.parent = parent;
+    }
+
+    public String getName() {
+        String uniqueName = placeObject.getName();
+        if (parent != null) uniqueName += " - " + parent.getName();
+        return uniqueName;
     }
 }

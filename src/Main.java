@@ -9,7 +9,7 @@ import com.jpexs.decompiler.flash.tags.Tag;
 import com.jpexs.decompiler.flash.tags.enums.ImageFormat;
 import com.jpexs.decompiler.flash.timeline.Timeline;
 import com.jpexs.decompiler.flash.types.RECT;
-import types.FindPlaceObjectResult;
+import types.PlaceObjectTreeItem;
 
 import java.awt.geom.Point2D;
 import java.awt.image.BufferedImage;
@@ -18,7 +18,6 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.util.AbstractMap;
 import java.util.ArrayList;
-import java.util.Objects;
 
 public class Main {
     static int ZOOM = 4;
@@ -34,7 +33,7 @@ public class Main {
 //            int[] headSpriteIds = {860, 883, 865, 828, 843, 880, 818, 833, 855, 870, 813, 838, 888, 808, 875, 848, 823, 893, 904, 911};
 //            int[] bodySpriteIds = {605, 621, 631, 650, 673, 627, 642, 658, 677, 615, 666, 609, 648, 662, 668, 654, 635, 681, 900, 907};
 //            int[] legIds = {710};
-            int[] pantsIds = {715};
+            int[] pantsIds = {731};
 
 //            for (int headSpriteId : headSpriteIds) {
 //                generateSpriteScene(swf, headSpriteId, "heads", "hair");
@@ -100,10 +99,10 @@ public class Main {
     static ArrayList<ExportImageResult> exportSpritePlaceObjects(DefineSpriteTag sprite, String folderPath) throws Exception {
         var exportImageResults = new ArrayList<ExportImageResult>();
 
-        var findPlaceObjectResults = findPlaceObjectTags(sprite);
-        for (FindPlaceObjectResult findPlaceObjectResult : findPlaceObjectResults) {
-            var placeObject = findPlaceObjectResult.getPlaceObject();
-            var parent = findPlaceObjectResult.getParent();
+        var findPlaceObjectResults = findPlaceObjectTreeItems(sprite);
+        for (PlaceObjectTreeItem placeObjectTreeItem : findPlaceObjectResults) {
+            var placeObject = placeObjectTreeItem.getPlaceObject();
+            var parent = placeObjectTreeItem.getParent();
 
             String name = String.format("%s", placeObject.getCharacterId());
             if (placeObject.name != null) name += "_" + placeObject.name;
@@ -111,7 +110,7 @@ public class Main {
 
             var fileName = String.format("%s.png", name);
             var childImagePath = String.format("%s\\%s", folderPath, fileName);
-            var exportRect = exportSpritePlaceObject(sprite.getCharacterId(), placeObject.getCharacterId(), childImagePath);
+            var exportRect = exportSpritePlaceObject(sprite.getCharacterId(), placeObjectTreeItem.getName(), childImagePath);
 
             exportImageResults.add(new ExportImageResult(exportRect, fileName, name));
         }
@@ -126,8 +125,8 @@ public class Main {
         return firstFrame.innerTags;
     }
 
-    static ArrayList<FindPlaceObjectResult> findPlaceObjectTags(DefineSpriteTag sprite) throws Exception {
-        ArrayList<FindPlaceObjectResult> result = new ArrayList<>();
+    static ArrayList<PlaceObjectTreeItem> findPlaceObjectTreeItems(DefineSpriteTag sprite) throws Exception {
+        ArrayList<PlaceObjectTreeItem> result = new ArrayList<>();
 
         var firstFrameTags = getFirstFrameTags(sprite);
         for (Tag spriteChildTag : firstFrameTags) {
@@ -135,31 +134,43 @@ public class Main {
 
             var child = TagUtils.getTagById(sprite.getSwf(), placeObject.getCharacterId());
             if (child instanceof DefineSpriteTag defineSpriteTag) {
-                var subPlaceObjects = findPlaceObjectTags(defineSpriteTag);
+                var subPlaceObjects = findPlaceObjectTreeItems(defineSpriteTag);
                 if (subPlaceObjects.size() > 1) {
-                    for (FindPlaceObjectResult subPlaceObject : subPlaceObjects) {
+                    for (PlaceObjectTreeItem subPlaceObject : subPlaceObjects) {
                         subPlaceObject.setParent(placeObject);
                     }
                     result.addAll(subPlaceObjects);
                     continue;
                 }
             }
-            result.add(new FindPlaceObjectResult(placeObject));
+            result.add(new PlaceObjectTreeItem(placeObject));
         }
 
         return result;
     }
 
-    static RECT exportSpritePlaceObject(int spriteId, int placeObjectId, String filePath) throws Exception {
+    static RECT exportSpritePlaceObject(int spriteId, String placeObjectTreeItemName, String filePath) throws Exception {
         try (FileInputStream fis = new FileInputStream(SWF_FILE_PATH)) {
             SWF swf = new SWF(fis, true);
             var sprite = TagUtils.getSprite(swf, spriteId);
-            var findPlaceObjectResults = findPlaceObjectTags(sprite);
+
+            var placeObjectTreeItems = findPlaceObjectTreeItems(sprite);
+            var placeObjectTreeItemToKeep = placeObjectTreeItems.stream().filter(p -> p.getName().equals(placeObjectTreeItemName)).findFirst().get();
 
             ArrayList<Tag> tagsToRemove = new ArrayList<>();
-            for (FindPlaceObjectResult findPlaceObjectResult : findPlaceObjectResults) {
-                var placeObjectTag = findPlaceObjectResult.getPlaceObject();
-                if (placeObjectTag.getCharacterId() != placeObjectId) tagsToRemove.add(placeObjectTag);
+
+            for (PlaceObjectTreeItem placeObjectTreeItem : placeObjectTreeItems) {
+                var placeObjectTag = placeObjectTreeItem.getPlaceObject();
+                if (placeObjectTreeItemToKeep.getPlaceObject() != placeObjectTag) {
+                    tagsToRemove.add(placeObjectTag);
+
+                    if (placeObjectTreeItem.getParent() != null) {
+                        var parent = placeObjectTreeItem.getParent();
+                        if (placeObjectTreeItemToKeep.getParent() != parent) {
+                            tagsToRemove.add(parent);
+                        }
+                    }
+                }
             }
 
             swf.removeTags(tagsToRemove, false, null);
