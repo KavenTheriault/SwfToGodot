@@ -85,7 +85,7 @@ public class Main {
         var godotWriteItems = buildGodotWriterItems(sprite, tagTreeItems, spriteFolderPath, containerFolderName, spriteNameToAddShader);
         var animation = buildAnimation(sprite, tagTreeItems);
 
-        godotFileWriter.writeScene(String.format("%s\\%s.tscn", spriteFolderPath, spriteId), godotWriteItems, animation);
+        godotFileWriter.writeScene(spriteFolderPath, Integer.toString(spriteId), godotWriteItems, animation);
     }
 
     static ArrayList<GodotWriterNode> buildGodotWriterItems(DefineSpriteTag sprite, ArrayList<TagTreeItem> tagTreeItems, String folderPath, String containerFolderName, String spriteNameToAddShader) {

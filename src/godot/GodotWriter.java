@@ -37,13 +37,13 @@ public class GodotWriter {
         lines.add("\n");
     }
 
-    public void writeScene(String filePath, ArrayList<GodotWriterNode> writerItems, GodotWriterAnimation animation) {
-        nodes.add(new GodotNode("Node2D", "Node2D", null, new ArrayList<>()));
+    public void writeScene(String folderPath, String name, ArrayList<GodotWriterNode> writerItems, GodotWriterAnimation animation) {
+        nodes.add(new GodotNode(name, "Node2D", null, new ArrayList<>()));
 
         writeItems(writerItems, ".");
         if (animation != null) writeAnimation(animation);
         generateLines();
-        writeFile(filePath);
+        writeFile(String.format("%s\\%s.tscn", folderPath, name));
     }
 
     private void writeItems(ArrayList<GodotWriterNode> writerNodes, String parent) {
