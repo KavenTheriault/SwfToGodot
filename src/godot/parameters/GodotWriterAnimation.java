@@ -7,10 +7,10 @@ public class GodotWriterAnimation {
     private Double step;
     private ArrayList<GodotWriterAnimationTrack> tracks;
 
-    public GodotWriterAnimation(Double length, Double step) {
+    public GodotWriterAnimation(Double length, Double step, ArrayList<GodotWriterAnimationTrack> tracks) {
         this.length = length;
         this.step = step;
-        this.tracks = new ArrayList<>();
+        this.tracks = tracks;
     }
 
     public Double getLength() {

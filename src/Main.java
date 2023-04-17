@@ -9,7 +9,7 @@ import com.jpexs.decompiler.flash.tags.Tag;
 import com.jpexs.decompiler.flash.tags.enums.ImageFormat;
 import com.jpexs.decompiler.flash.timeline.Timeline;
 import com.jpexs.decompiler.flash.types.RECT;
-import godot.*;
+import godot.GodotWriter;
 import godot.parameters.*;
 import types.ExportImageResult;
 import types.TagTreeItem;
@@ -25,6 +25,9 @@ import java.util.AbstractMap;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+
+import static java.util.stream.Collectors.groupingBy;
+import static utils.GeoUtils.twipToPixel;
 
 public class Main {
     static int ZOOM = 4;
@@ -79,11 +82,13 @@ public class Main {
             }
         }
 
-        var tagTreeItems = getTagTreeItems(sprite, true);
-
         var godotFileWriter = new GodotWriter();
+
+        var tagTreeItems = getTagTreeItems(sprite, true);
         var godotWriteItems = buildGodotWriterItems(sprite, tagTreeItems, spriteFolderPath, containerFolderName, spriteNameToAddShader);
-        var animation = buildAnimation(sprite, tagTreeItems);
+
+        var allTagTreeItems = getTagTreeItems(sprite, false);
+        var animation = buildAnimation(sprite, allTagTreeItems);
 
         godotFileWriter.writeScene(spriteFolderPath, Integer.toString(spriteId), godotWriteItems, animation);
     }
@@ -104,19 +109,51 @@ public class Main {
     }
 
     static GodotWriterAnimation buildAnimation(DefineSpriteTag sprite, ArrayList<TagTreeItem> tagTreeItems) {
-        //var step = 1.0 / sprite.getSwf().frameRate;
-        //var animation = new GodotWriterAnimation((sprite.getTimeline().getFrameCount() - 1) * step, step);
+        if (sprite.isSingleFrame()) return null;
 
-        var step = 0.5;
-        var animation = new GodotWriterAnimation((3 - 1) * step, step);
+        var tracks = new ArrayList<GodotWriterAnimationTrack>();
 
-        for (TagTreeItem tagTreeItem : tagTreeItems) {
-            if (tagTreeItem.getChildren() != null) {
-                animation.getTracks().add(new GodotWriterAnimationTrack(tagTreeItem.getTag().name, "position", new Point2D.Double[]{new Point2D.Double(0, 0), new Point2D.Double(50, 50), new Point2D.Double(50, 0)}));
+        var tagsByDepth = tagTreeItems.stream().collect(groupingBy(t -> t.getTag().depth));
+        for (var depthTags : tagsByDepth.entrySet()) {
+            if (depthTags.getValue().size() == 1) continue;
+
+            Matrix originMatrix = null;
+            var firstFrameTag = depthTags.getValue().get(0);
+            var positions = new ArrayList<Point2D.Double>();
+            var scales = new ArrayList<Point2D.Double>();
+
+            for (var tag : depthTags.getValue()) {
+                if (originMatrix != null) {
+                    var currentMatrix = new Matrix(tag.getTag().getMatrix());
+
+                    var translateX = twipToPixel(currentMatrix.translateX - originMatrix.translateX) * 5;
+                    var translateY = twipToPixel(currentMatrix.translateY - originMatrix.translateY) * 5;
+                    positions.add(new Point2D.Double(translateX, translateY));
+
+                    var scaleX = 1 + currentMatrix.scaleX - originMatrix.scaleX;
+                    var scaleY = 1 + currentMatrix.scaleY - originMatrix.scaleY;
+                    scales.add(new Point2D.Double(scaleX, scaleY));
+
+//                    var rotateSkew0 = currentMatrix.rotateSkew0 - originMatrix.rotateSkew0;
+//                    var rotateSkew1 = currentMatrix.rotateSkew1 - originMatrix.rotateSkew1;
+//                    System.out.println("ROTATE: " + rotateSkew0 + " " + rotateSkew1);
+                } else {
+                    originMatrix = new Matrix(tag.getTag().getMatrix());
+                    positions.add(new Point2D.Double(0, 0));
+                    scales.add(new Point2D.Double(1, 1));
+                }
             }
+
+            tracks.add(new GodotWriterAnimationTrack(firstFrameTag.getTag().name, "position", positions));
+            tracks.add(new GodotWriterAnimationTrack(firstFrameTag.getTag().name, "scale", scales));
         }
 
-        return animation;
+        if (tracks.size() > 0) {
+            var step = 1.0 / sprite.getSwf().frameRate;
+            return new GodotWriterAnimation((tracks.get(0).getValues().size() - 1) * step, step, tracks);
+        }
+
+        return null;
     }
 
     static GodotWriterSprite buildGodotWriterSprite(ExportImageResult exportImageResult, int spriteId, String containerFolderName, String spriteNameToAddShader) {
@@ -241,6 +278,6 @@ public class Main {
         var childRectOrigin = centerChildTranslation.transform(childRectDestination);
         var resultTranslation = GeoUtils.getTranslation(new Point2D.Double(childRectDestination.xMin, childRectDestination.yMin), new Point2D.Double(childRectOrigin.xMin, childRectOrigin.yMin));
 
-        return new Point2D.Double(GeoUtils.twipToPixel(resultTranslation.translateX * ZOOM), GeoUtils.twipToPixel(resultTranslation.translateY * ZOOM));
+        return new Point2D.Double(twipToPixel(resultTranslation.translateX * ZOOM), twipToPixel(resultTranslation.translateY * ZOOM));
     }
 }

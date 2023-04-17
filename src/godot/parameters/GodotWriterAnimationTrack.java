@@ -1,13 +1,14 @@
 package godot.parameters;
 
 import java.awt.geom.Point2D;
+import java.util.ArrayList;
 
 public class GodotWriterAnimationTrack {
     private String targetName;
     private String targetProperty;
-    private Point2D.Double[] values;
+    private ArrayList<Point2D.Double> values;
 
-    public GodotWriterAnimationTrack(String targetName, String targetProperty, Point2D.Double[] values) {
+    public GodotWriterAnimationTrack(String targetName, String targetProperty, ArrayList<Point2D.Double> values) {
         this.targetName = targetName;
         this.targetProperty = targetProperty;
         this.values = values;
@@ -21,7 +22,7 @@ public class GodotWriterAnimationTrack {
         return targetProperty;
     }
 
-    public Point2D.Double[] getValues() {
+    public ArrayList<Point2D.Double> getValues() {
         return values;
     }
 }
