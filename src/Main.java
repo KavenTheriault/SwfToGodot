@@ -10,6 +10,7 @@ import com.jpexs.decompiler.flash.tags.enums.ImageFormat;
 import com.jpexs.decompiler.flash.timeline.Timeline;
 import com.jpexs.decompiler.flash.types.RECT;
 import godot.*;
+import godot.parameters.*;
 import types.ExportImageResult;
 import types.TagTreeItem;
 import utils.GeoUtils;
@@ -82,16 +83,17 @@ public class Main {
 
         var godotFileWriter = new GodotWriter();
         var godotWriteItems = buildGodotWriterItems(sprite, tagTreeItems, spriteFolderPath, containerFolderName, spriteNameToAddShader);
+        var animation = buildAnimation(sprite, tagTreeItems);
 
-        godotFileWriter.writeScene(String.format("%s\\%s.tscn", spriteFolderPath, spriteId), godotWriteItems);
+        godotFileWriter.writeScene(String.format("%s\\%s.tscn", spriteFolderPath, spriteId), godotWriteItems, animation);
     }
 
-    static ArrayList<GodotWriterItem> buildGodotWriterItems(DefineSpriteTag sprite, ArrayList<TagTreeItem> tagTreeItems, String folderPath, String containerFolderName, String spriteNameToAddShader) {
-        var result = new ArrayList<GodotWriterItem>();
+    static ArrayList<GodotWriterNode> buildGodotWriterItems(DefineSpriteTag sprite, ArrayList<TagTreeItem> tagTreeItems, String folderPath, String containerFolderName, String spriteNameToAddShader) {
+        var result = new ArrayList<GodotWriterNode>();
         for (TagTreeItem tagTreeItem : tagTreeItems) {
             if (tagTreeItem.getChildren() != null) {
                 var godotWriteGroup = new GodotWriterGroup(tagTreeItem.getTag().name);
-                godotWriteGroup.getItems().addAll(buildGodotWriterItems(sprite, tagTreeItem.getChildren(), folderPath, containerFolderName, spriteNameToAddShader));
+                godotWriteGroup.getNodes().addAll(buildGodotWriterItems(sprite, tagTreeItem.getChildren(), folderPath, containerFolderName, spriteNameToAddShader));
                 result.add(godotWriteGroup);
             } else {
                 var exportImageResult = exportPlaceObjectImage(sprite, tagTreeItem, folderPath);
@@ -99,6 +101,22 @@ public class Main {
             }
         }
         return result;
+    }
+
+    static GodotWriterAnimation buildAnimation(DefineSpriteTag sprite, ArrayList<TagTreeItem> tagTreeItems) {
+        //var step = 1.0 / sprite.getSwf().frameRate;
+        //var animation = new GodotWriterAnimation((sprite.getTimeline().getFrameCount() - 1) * step, step);
+
+        var step = 0.5;
+        var animation = new GodotWriterAnimation((3 - 1) * step, step);
+
+        for (TagTreeItem tagTreeItem : tagTreeItems) {
+            if (tagTreeItem.getChildren() != null) {
+                animation.getTracks().add(new GodotWriterAnimationTrack(tagTreeItem.getTag().name, "position", new Point2D.Double[]{new Point2D.Double(0, 0), new Point2D.Double(50, 50), new Point2D.Double(50, 0)}));
+            }
+        }
+
+        return animation;
     }
 
     static GodotWriterSprite buildGodotWriterSprite(ExportImageResult exportImageResult, int spriteId, String containerFolderName, String spriteNameToAddShader) {

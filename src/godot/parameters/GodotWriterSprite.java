@@ -1,8 +1,8 @@
-package godot;
+package godot.parameters;
 
 import java.awt.geom.Point2D;
 
-public class GodotWriterSprite extends GodotWriterItem {
+public class GodotWriterSprite extends GodotWriterNode {
     private String resourcePath;
     private Point2D.Double position;
     private ShaderOption shaderOption;

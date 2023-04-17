@@ -1,5 +1,10 @@
 package godot;
 
+import godot.parameters.GodotWriterAnimation;
+import godot.parameters.GodotWriterGroup;
+import godot.parameters.GodotWriterNode;
+import godot.parameters.GodotWriterSprite;
+import godot.schema.*;
 import utils.RandomStringGenerator;
 
 import java.io.File;
@@ -32,22 +37,86 @@ public class GodotWriter {
         lines.add("\n");
     }
 
-    public void writeScene(String filePath, ArrayList<GodotWriterItem> writerItems) {
+    public void writeScene(String filePath, ArrayList<GodotWriterNode> writerItems, GodotWriterAnimation animation) {
         nodes.add(new GodotNode("Node2D", "Node2D", null, new ArrayList<>()));
 
         writeItems(writerItems, ".");
+        if (animation != null) writeAnimation(animation);
         generateLines();
         writeFile(filePath);
     }
 
-    private void writeItems(ArrayList<GodotWriterItem> writerItems, String parent) {
-        for (var writerItem : writerItems) {
-            if (writerItem instanceof GodotWriterSprite writerSprite) writeSprite(writerSprite, parent);
-            if (writerItem instanceof GodotWriterGroup writerGroup) {
+    private void writeItems(ArrayList<GodotWriterNode> writerNodes, String parent) {
+        for (var writerNode : writerNodes) {
+            if (writerNode instanceof GodotWriterSprite writerSprite) writeSprite(writerSprite, parent);
+            if (writerNode instanceof GodotWriterGroup writerGroup) {
                 nodes.add(new GodotNode(writerGroup.getName(), "Node2D", parent, new ArrayList<>()));
-                writeItems(writerGroup.getItems(), writerGroup.getName());
+                writeItems(writerGroup.getNodes(), writerGroup.getName());
             }
         }
+    }
+
+    private void writeAnimation(GodotWriterAnimation godotWriterAnimation) {
+        var animationName = "generated";
+        var animationProperties = new ArrayList<AbstractMap.SimpleEntry<String, String>>();
+
+        animationProperties.add(new AbstractMap.SimpleEntry<>("resource_name", String.format("\"%s\"", animationName)));
+        animationProperties.add(new AbstractMap.SimpleEntry<>("length", godotWriterAnimation.getLength().toString()));
+        animationProperties.add(new AbstractMap.SimpleEntry<>("step", godotWriterAnimation.getStep().toString()));
+
+        for (int i = 0; i < godotWriterAnimation.getTracks().size(); i++) {
+            var track = godotWriterAnimation.getTracks().get(i);
+            var prefix = String.format("tracks/%s", i);
+
+            animationProperties.add(new AbstractMap.SimpleEntry<>(String.format("%s/type", prefix), "\"value\""));
+            animationProperties.add(new AbstractMap.SimpleEntry<>(String.format("%s/imported", prefix), "false"));
+            animationProperties.add(new AbstractMap.SimpleEntry<>(String.format("%s/enabled", prefix), "true"));
+            animationProperties.add(new AbstractMap.SimpleEntry<>(String.format("%s/path", prefix), String.format("NodePath(\"%s:%s\")", track.getTargetName(), track.getTargetProperty())));
+            animationProperties.add(new AbstractMap.SimpleEntry<>(String.format("%s/interp", prefix), "1"));
+            animationProperties.add(new AbstractMap.SimpleEntry<>(String.format("%s/loop_wrap", prefix), "true"));
+
+            var times = new ArrayList<String>();
+            var transitions = new ArrayList<String>();
+            var values = new ArrayList<String>();
+            for (int j = 0; j < track.getValues().length; j++) {
+                var time = godotWriterAnimation.getStep() * j;
+                var value = track.getValues()[j];
+
+                times.add(Double.toString(time));
+                transitions.add("1");
+                values.add(String.format("Vector2(%s, %s)", value.x, value.y));
+            }
+            var timesStr = String.join(", ", times);
+            var transitionsStr = String.join(", ", transitions);
+            var valuesStr = String.join(", ", values);
+
+            var keys = String.format("""
+{
+    "times": PackedFloat32Array(%s),
+    "transitions": PackedFloat32Array(%s),
+    "update": 0,
+    "values": [%s]
+}""", timesStr, transitionsStr, valuesStr);
+
+            animationProperties.add(new AbstractMap.SimpleEntry<>(String.format("%s/keys", prefix), keys));
+        }
+
+        var type = "Animation";
+        var animationId = String.format("%s_%s", type, randomStringGenerator.randomString(5));
+        GodotSubResource animationSubResource = new GodotSubResource(animationId, type, animationProperties);
+        subResources.add(animationSubResource);
+
+        var typeLibrary = "AnimationLibrary";
+        var animationLibraryId = String.format("%s_%s", typeLibrary, randomStringGenerator.randomString(5));
+        var animationLibraryProperties = new ArrayList<AbstractMap.SimpleEntry<String, String>>();
+        animationLibraryProperties.add(new AbstractMap.SimpleEntry<>("_data", String.format("{ \"%s\": SubResource(\"%s\") }", animationName, animationId)));
+
+        GodotSubResource animationLibrarySubResource = new GodotSubResource(animationLibraryId, typeLibrary, animationLibraryProperties);
+        subResources.add(animationLibrarySubResource);
+
+        var animationPlayerProperties = new ArrayList<AbstractMap.SimpleEntry<String, String>>();
+        animationPlayerProperties.add(new AbstractMap.SimpleEntry<>("libraries", String.format("{ \"\": SubResource(\"%s\") }", animationLibraryId)));
+        nodes.add(new GodotNode("AnimationPlayer", "AnimationPlayer", ".", animationPlayerProperties));
     }
 
     private void writeSprite(GodotWriterSprite godotWriterSprite, String parent) {

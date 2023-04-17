@@ -1,4 +1,4 @@
-package godot;
+package godot.schema;
 
 public class GodotResource {
     private String type;

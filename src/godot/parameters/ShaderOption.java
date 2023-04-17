@@ -1,4 +1,4 @@
-package godot;
+package godot.parameters;
 
 import java.util.AbstractMap;
 
