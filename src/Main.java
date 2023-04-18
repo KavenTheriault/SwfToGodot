@@ -30,6 +30,7 @@ public class Main {
     static int ZOOM = 4;
     static String SWF_FILE_PATH = "C:\\Users\\ZoidQC\\Downloads\\sloche-res\\client\\sloche2007.swf";
     static String RESOURCE_FOLDER_PATH = "C:\\Users\\ZoidQC\\Documents\\projects\\ExportTests";
+    static boolean CENTER_GROUP_AT_0_0 = true;
     static String COLOR_SHADER_RESOURCE_PATH = "res://shaders/change_color.gdshader";
     static AbstractMap.SimpleEntry<String, String> COLOR_SHADER_PARAMETER = new AbstractMap.SimpleEntry<>("shader_parameter/color", "Vector4(0.3, 0.79, 0.94, 1)");
 
@@ -109,8 +110,13 @@ public class Main {
         var result = new LinkedHashMap<String, GodotWriterNode>();
         for (TagTreeItem tagTreeItem : tagTreeItems) {
             if (tagTreeItem.getChildren() != null) {
-                var childrenImagesRect = tagTreeItem.getChildren().stream().map(c -> exportSpriteImages.get(c.getName()).getExportRect()).toList();
-                var groupCenter = GeoUtils.centerRect(GeoUtils.mergeRect(childrenImagesRect));
+                Point2D.Double groupCenter;
+                if (CENTER_GROUP_AT_0_0) {
+                    groupCenter = new Point2D.Double(0, 0);
+                } else {
+                    var childrenImagesRect = tagTreeItem.getChildren().stream().map(c -> exportSpriteImages.get(c.getName()).getExportRect()).toList();
+                    groupCenter = GeoUtils.centerRect(GeoUtils.mergeRect(childrenImagesRect));
+                }
 
                 var godotWriteGroup = new GodotWriterGroup(tagTreeItem.getTag().name, swfPositionToGodotPosition(groupCenter));
                 var writerItems = buildGodotWriterItems(sprite, tagTreeItem.getChildren(), exportSpriteImages, containerFolderName, spriteNameToAddShader, groupCenter);
@@ -140,38 +146,41 @@ public class Main {
 
             var positions = new ArrayList<Point2D.Double>();
             var scales = new ArrayList<Point2D.Double>();
+            var rotations = new ArrayList<Double>();
 
             for (var tag : depthTags.getValue()) {
                 if (originMatrix != null) {
                     var currentMatrix = new Matrix(tag.getTag().getMatrix());
 
-                    var translateX = twipToPixel(currentMatrix.translateX - originMatrix.translateX) * ZOOM;
-                    var translateY = twipToPixel(currentMatrix.translateY - originMatrix.translateY) * ZOOM;
-                    var translation = Matrix.getTranslateInstance(translateX, translateY);
-                    var translatedPoint = translation.transform(originPosition.x, originPosition.y);
-                    positions.add(new Point2D.Double(translatedPoint.x, translatedPoint.y));
-
                     var scaleX = 1 + currentMatrix.scaleX - originMatrix.scaleX;
                     var scaleY = 1 + currentMatrix.scaleY - originMatrix.scaleY;
                     scales.add(new Point2D.Double(scaleX, scaleY));
 
-//                    var rotateSkew0 = currentMatrix.rotateSkew0 - originMatrix.rotateSkew0;
-//                    var rotateSkew1 = currentMatrix.rotateSkew1 - originMatrix.rotateSkew1;
-//                    System.out.println("ROTATE: " + rotateSkew0 + " " + rotateSkew1);
+                    var translateX = twipToPixel((currentMatrix.translateX - originMatrix.translateX) * ZOOM);
+                    var translateY = twipToPixel((currentMatrix.translateY - originMatrix.translateY) * ZOOM);
+                    var translation = Matrix.getTranslateInstance(translateX, translateY);
+                    var translatedPoint = translation.transform(originPosition.x, originPosition.y);
+                    positions.add(new Point2D.Double(translatedPoint.x * scaleX, translatedPoint.y * scaleY));
+
+                    var rotateSkew0 = currentMatrix.rotateSkew0 - originMatrix.rotateSkew0;
+                    var rotateSkew1 = currentMatrix.rotateSkew1 - originMatrix.rotateSkew1;
+                    rotations.add((rotateSkew0 + rotateSkew1) * -1);
                 } else {
                     originMatrix = new Matrix(tag.getTag().getMatrix());
                     positions.add(originPosition);
                     scales.add(new Point2D.Double(1, 1));
+                    rotations.add(0.0);
                 }
             }
 
-            tracks.add(new GodotWriterAnimationTrack(firstFrameTag.getTag().name, "position", positions));
-            tracks.add(new GodotWriterAnimationTrack(firstFrameTag.getTag().name, "scale", scales));
+            tracks.add(new GodotWriterAnimationTrack(firstFrameTag.getTag().name, "position", positions, null));
+            tracks.add(new GodotWriterAnimationTrack(firstFrameTag.getTag().name, "scale", scales, null));
+            tracks.add(new GodotWriterAnimationTrack(firstFrameTag.getTag().name, "rotation", null, rotations));
         }
 
         if (tracks.size() > 0) {
             var step = 1.0 / sprite.getSwf().frameRate;
-            return new GodotWriterAnimation((tracks.get(0).getValues().size() - 1) * step, step, tracks);
+            return new GodotWriterAnimation((tracks.get(0).getVectorValues().size() - 1) * step, step, tracks);
         }
 
         return null;

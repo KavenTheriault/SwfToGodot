@@ -6,12 +6,14 @@ import java.util.ArrayList;
 public class GodotWriterAnimationTrack {
     private String targetName;
     private String targetProperty;
-    private ArrayList<Point2D.Double> values;
+    private ArrayList<Point2D.Double> vectorValues;
+    private ArrayList<Double> doubleValues;
 
-    public GodotWriterAnimationTrack(String targetName, String targetProperty, ArrayList<Point2D.Double> values) {
+    public GodotWriterAnimationTrack(String targetName, String targetProperty, ArrayList<Point2D.Double> vectorValues, ArrayList<Double> doubleValues) {
         this.targetName = targetName;
         this.targetProperty = targetProperty;
-        this.values = values;
+        this.vectorValues = vectorValues;
+        this.doubleValues = doubleValues;
     }
 
     public String getTargetName() {
@@ -22,7 +24,11 @@ public class GodotWriterAnimationTrack {
         return targetProperty;
     }
 
-    public ArrayList<Point2D.Double> getValues() {
-        return values;
+    public ArrayList<Point2D.Double> getVectorValues() {
+        return vectorValues;
+    }
+
+    public ArrayList<Double> getDoubleValues() {
+        return doubleValues;
     }
 }

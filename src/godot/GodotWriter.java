@@ -82,14 +82,27 @@ public class GodotWriter {
             var times = new ArrayList<String>();
             var transitions = new ArrayList<String>();
             var values = new ArrayList<String>();
-            for (int j = 0; j < track.getValues().size(); j++) {
-                var time = godotWriterAnimation.getStep() * j;
-                var value = track.getValues().get(j);
 
+            if (track.getVectorValues() != null) {
+                for (int j = 0; j < track.getVectorValues().size(); j++) {
+                    var value = track.getVectorValues().get(j);
+                    values.add(String.format("Vector2(%.4f, %.4f)", value.x, value.y));
+                }
+            }
+
+            if (track.getDoubleValues() != null) {
+                for (int j = 0; j < track.getDoubleValues().size(); j++) {
+                    var value = track.getDoubleValues().get(j);
+                    values.add(String.format("%.4f", value));
+                }
+            }
+
+            for (int j = 0; j < values.size(); j++) {
+                var time = godotWriterAnimation.getStep() * j;
                 times.add(Double.toString(time));
                 transitions.add("1");
-                values.add(String.format("Vector2(%.4f, %.4f)", value.x, value.y));
             }
+
             var timesStr = String.join(", ", times);
             var transitionsStr = String.join(", ", transitions);
             var valuesStr = String.join(", ", values);
