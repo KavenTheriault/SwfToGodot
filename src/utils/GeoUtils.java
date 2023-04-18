@@ -6,6 +6,8 @@ import com.jpexs.decompiler.flash.exporters.commonshape.Matrix;
 import com.jpexs.decompiler.flash.types.RECT;
 
 import java.awt.geom.Point2D;
+import java.util.Comparator;
+import java.util.List;
 
 public class GeoUtils {
     public static Point2D.Double centerRect(RECT rect) {
@@ -28,13 +30,11 @@ public class GeoUtils {
         return Matrix.getTranslateInstance(origin.x - destination.x, origin.y - destination.y);
     }
 
-    public static Matrix getCenteringTranslation(RECT rect) {
-        Point2D.Double rectCenter = centerRect(rect);
-        return getTranslation(new Point2D.Double(0, 0), rectCenter);
-    }
-
-    public static Matrix getCenteringTranslation(ExportRectangle rect) {
-        Point2D.Double rectCenter = centerRect(rect);
-        return getTranslation(new Point2D.Double(0, 0), rectCenter);
+    public static RECT mergeRect(List<RECT> rects) {
+        var minX = rects.stream().min(Comparator.comparingInt((RECT r) -> r.Xmin)).get().Xmin;
+        var maxX = rects.stream().max(Comparator.comparingInt((RECT r) -> r.Xmax)).get().Xmax;
+        var minY = rects.stream().min(Comparator.comparingInt((RECT r) -> r.Ymin)).get().Ymin;
+        var maxY = rects.stream().max(Comparator.comparingInt((RECT r) -> r.Ymax)).get().Ymax;
+        return new RECT(minX, maxX, minY, maxY);
     }
 }

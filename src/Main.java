@@ -21,10 +21,7 @@ import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
-import java.util.AbstractMap;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Objects;
+import java.util.*;
 
 import static java.util.stream.Collectors.groupingBy;
 import static utils.GeoUtils.twipToPixel;
@@ -85,30 +82,50 @@ public class Main {
         var godotFileWriter = new GodotWriter();
 
         var tagTreeItems = getTagTreeItems(sprite, true);
-        var godotWriteItems = buildGodotWriterItems(sprite, tagTreeItems, spriteFolderPath, containerFolderName, spriteNameToAddShader);
+        var exportSpriteImages = exportSpriteImages(sprite, tagTreeItems, spriteFolderPath);
+        var godotWriteItems = buildGodotWriterItems(sprite, tagTreeItems, exportSpriteImages, containerFolderName, spriteNameToAddShader, new Point2D.Double(0, 0));
 
         var allTagTreeItems = getTagTreeItems(sprite, false);
-        var animation = buildAnimation(sprite, allTagTreeItems);
+        var animation = buildAnimation(sprite, allTagTreeItems, godotWriteItems);
 
-        godotFileWriter.writeScene(spriteFolderPath, Integer.toString(spriteId), godotWriteItems, animation);
+        godotFileWriter.writeScene(spriteFolderPath, Integer.toString(spriteId), godotWriteItems.values(), animation);
     }
 
-    static ArrayList<GodotWriterNode> buildGodotWriterItems(DefineSpriteTag sprite, ArrayList<TagTreeItem> tagTreeItems, String folderPath, String containerFolderName, String spriteNameToAddShader) {
-        var result = new ArrayList<GodotWriterNode>();
+    static HashMap<String, ExportImageResult> exportSpriteImages(DefineSpriteTag sprite, ArrayList<TagTreeItem> tagTreeItems, String folderPath) {
+        var result = new HashMap<String, ExportImageResult>();
         for (TagTreeItem tagTreeItem : tagTreeItems) {
             if (tagTreeItem.getChildren() != null) {
-                var godotWriteGroup = new GodotWriterGroup(tagTreeItem.getTag().name);
-                godotWriteGroup.getNodes().addAll(buildGodotWriterItems(sprite, tagTreeItem.getChildren(), folderPath, containerFolderName, spriteNameToAddShader));
-                result.add(godotWriteGroup);
+                var exportImageResults = exportSpriteImages(sprite, tagTreeItem.getChildren(), folderPath);
+                result.putAll(exportImageResults);
             } else {
                 var exportImageResult = exportPlaceObjectImage(sprite, tagTreeItem, folderPath);
-                result.add(buildGodotWriterSprite(exportImageResult, sprite.getCharacterId(), containerFolderName, spriteNameToAddShader));
+                result.put(tagTreeItem.getName(), exportImageResult);
             }
         }
         return result;
     }
 
-    static GodotWriterAnimation buildAnimation(DefineSpriteTag sprite, ArrayList<TagTreeItem> tagTreeItems) {
+    static LinkedHashMap<String, GodotWriterNode> buildGodotWriterItems(DefineSpriteTag sprite, ArrayList<TagTreeItem> tagTreeItems, HashMap<String, ExportImageResult> exportSpriteImages, String containerFolderName, String spriteNameToAddShader, Point2D.Double parentCenter) {
+        var result = new LinkedHashMap<String, GodotWriterNode>();
+        for (TagTreeItem tagTreeItem : tagTreeItems) {
+            if (tagTreeItem.getChildren() != null) {
+                var childrenImagesRect = tagTreeItem.getChildren().stream().map(c -> exportSpriteImages.get(c.getName()).getExportRect()).toList();
+                var groupCenter = GeoUtils.centerRect(GeoUtils.mergeRect(childrenImagesRect));
+
+                var godotWriteGroup = new GodotWriterGroup(tagTreeItem.getTag().name, swfPositionToGodotPosition(groupCenter));
+                var writerItems = buildGodotWriterItems(sprite, tagTreeItem.getChildren(), exportSpriteImages, containerFolderName, spriteNameToAddShader, groupCenter);
+                godotWriteGroup.getNodes().addAll(writerItems.values());
+
+                result.put(tagTreeItem.getName(), godotWriteGroup);
+            } else {
+                var exportImageResult = exportSpriteImages.get(tagTreeItem.getName());
+                result.put(tagTreeItem.getName(), buildGodotWriterSprite(exportImageResult, sprite.getCharacterId(), containerFolderName, spriteNameToAddShader, parentCenter));
+            }
+        }
+        return result;
+    }
+
+    static GodotWriterAnimation buildAnimation(DefineSpriteTag sprite, ArrayList<TagTreeItem> tagTreeItems, HashMap<String, GodotWriterNode> godotWriteItems) {
         if (sprite.isSingleFrame()) return null;
 
         var tracks = new ArrayList<GodotWriterAnimationTrack>();
@@ -119,6 +136,8 @@ public class Main {
 
             Matrix originMatrix = null;
             var firstFrameTag = depthTags.getValue().get(0);
+            var originPosition = godotWriteItems.get(firstFrameTag.getName()).getPosition();
+
             var positions = new ArrayList<Point2D.Double>();
             var scales = new ArrayList<Point2D.Double>();
 
@@ -126,9 +145,11 @@ public class Main {
                 if (originMatrix != null) {
                     var currentMatrix = new Matrix(tag.getTag().getMatrix());
 
-                    var translateX = twipToPixel(currentMatrix.translateX - originMatrix.translateX) * 5;
-                    var translateY = twipToPixel(currentMatrix.translateY - originMatrix.translateY) * 5;
-                    positions.add(new Point2D.Double(translateX, translateY));
+                    var translateX = twipToPixel(currentMatrix.translateX - originMatrix.translateX) * ZOOM;
+                    var translateY = twipToPixel(currentMatrix.translateY - originMatrix.translateY) * ZOOM;
+                    var translation = Matrix.getTranslateInstance(translateX, translateY);
+                    var translatedPoint = translation.transform(originPosition.x, originPosition.y);
+                    positions.add(new Point2D.Double(translatedPoint.x, translatedPoint.y));
 
                     var scaleX = 1 + currentMatrix.scaleX - originMatrix.scaleX;
                     var scaleY = 1 + currentMatrix.scaleY - originMatrix.scaleY;
@@ -139,7 +160,7 @@ public class Main {
 //                    System.out.println("ROTATE: " + rotateSkew0 + " " + rotateSkew1);
                 } else {
                     originMatrix = new Matrix(tag.getTag().getMatrix());
-                    positions.add(new Point2D.Double(0, 0));
+                    positions.add(originPosition);
                     scales.add(new Point2D.Double(1, 1));
                 }
             }
@@ -156,8 +177,8 @@ public class Main {
         return null;
     }
 
-    static GodotWriterSprite buildGodotWriterSprite(ExportImageResult exportImageResult, int spriteId, String containerFolderName, String spriteNameToAddShader) {
-        var translation = getTranslationNeededInGodot(exportImageResult.getExportRect());
+    static GodotWriterSprite buildGodotWriterSprite(ExportImageResult exportImageResult, int spriteId, String containerFolderName, String spriteNameToAddShader, Point2D.Double parentCenter) {
+        var translation = getTranslationNeededInGodot(exportImageResult.getExportRect(), parentCenter);
         var shouldAddShader = exportImageResult.getName() != null && exportImageResult.getName().contains(spriteNameToAddShader);
         return new GodotWriterSprite(
                 exportImageResult.getName(),
@@ -272,12 +293,19 @@ public class Main {
         }
     }
 
-    static Point2D.Double getTranslationNeededInGodot(RECT childRect) {
-        var childRectDestination = new ExportRectangle(childRect);
-        var centerChildTranslation = GeoUtils.getCenteringTranslation(childRect);
-        var childRectOrigin = centerChildTranslation.transform(childRectDestination);
-        var resultTranslation = GeoUtils.getTranslation(new Point2D.Double(childRectDestination.xMin, childRectDestination.yMin), new Point2D.Double(childRectOrigin.xMin, childRectOrigin.yMin));
+    static Point2D.Double getTranslationNeededInGodot(RECT spriteRect, Point2D.Double parentCenter) {
+        var childRectDestination = new ExportRectangle(spriteRect);
 
-        return new Point2D.Double(twipToPixel(resultTranslation.translateX * ZOOM), twipToPixel(resultTranslation.translateY * ZOOM));
+        var spriteCenter = GeoUtils.centerRect(spriteRect);
+        var centerChildTranslation = GeoUtils.getTranslation(parentCenter, spriteCenter);
+
+        var originInGodot = centerChildTranslation.transform(childRectDestination);
+        var resultTranslation = GeoUtils.getTranslation(new Point2D.Double(childRectDestination.xMin, childRectDestination.yMin), new Point2D.Double(originInGodot.xMin, originInGodot.yMin));
+
+        return swfPositionToGodotPosition(new Point2D.Double(resultTranslation.translateX, resultTranslation.translateY));
+    }
+
+    static Point2D.Double swfPositionToGodotPosition(Point2D.Double position) {
+        return new Point2D.Double(twipToPixel(position.x * ZOOM), twipToPixel(position.y * ZOOM));
     }
 }

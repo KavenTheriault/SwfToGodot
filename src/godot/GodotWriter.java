@@ -12,6 +12,7 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.util.AbstractMap;
 import java.util.ArrayList;
+import java.util.Collection;
 
 public class GodotWriter {
     private ArrayList<String> lines;
@@ -37,7 +38,7 @@ public class GodotWriter {
         lines.add("\n");
     }
 
-    public void writeScene(String folderPath, String name, ArrayList<GodotWriterNode> writerItems, GodotWriterAnimation animation) {
+    public void writeScene(String folderPath, String name, Collection<GodotWriterNode> writerItems, GodotWriterAnimation animation) {
         nodes.add(new GodotNode(name, "Node2D", null, new ArrayList<>()));
 
         writeItems(writerItems, ".");
@@ -46,11 +47,14 @@ public class GodotWriter {
         writeFile(String.format("%s\\%s.tscn", folderPath, name));
     }
 
-    private void writeItems(ArrayList<GodotWriterNode> writerNodes, String parent) {
+    private void writeItems(Collection<GodotWriterNode> writerNodes, String parent) {
         for (var writerNode : writerNodes) {
             if (writerNode instanceof GodotWriterSprite writerSprite) writeSprite(writerSprite, parent);
             if (writerNode instanceof GodotWriterGroup writerGroup) {
-                nodes.add(new GodotNode(writerGroup.getName(), "Node2D", parent, new ArrayList<>()));
+                var nodeProperties = new ArrayList<AbstractMap.SimpleEntry<String, String>>();
+                nodeProperties.add(new AbstractMap.SimpleEntry<>("position", String.format("Vector2(%s, %s)", writerGroup.getPosition().x, writerGroup.getPosition().y)));
+
+                nodes.add(new GodotNode(writerGroup.getName(), "Node2D", parent, nodeProperties));
                 writeItems(writerGroup.getNodes(), writerGroup.getName());
             }
         }
