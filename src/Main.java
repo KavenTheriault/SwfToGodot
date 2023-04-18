@@ -158,9 +158,7 @@ public class Main {
 
                     var translateX = twipToPixel((currentMatrix.translateX - originMatrix.translateX) * ZOOM);
                     var translateY = twipToPixel((currentMatrix.translateY - originMatrix.translateY) * ZOOM);
-                    var translation = Matrix.getTranslateInstance(translateX, translateY);
-                    var translatedPoint = translation.transform(originPosition.x, originPosition.y);
-                    positions.add(new Point2D.Double(translatedPoint.x * scaleX, translatedPoint.y * scaleY));
+                    positions.add(new Point2D.Double(translateX, translateY));
 
                     var rotateSkew0 = currentMatrix.rotateSkew0 - originMatrix.rotateSkew0;
                     var rotateSkew1 = currentMatrix.rotateSkew1 - originMatrix.rotateSkew1;
