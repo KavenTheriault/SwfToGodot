@@ -210,7 +210,7 @@ public class Main {
         var placeObject = tagTreeItem.getTag();
         var parent = tagTreeItem.getParent();
 
-        String name = String.format("%s", placeObject.getCharacterId());
+        String name = String.format("%s-%s", placeObject.depth, placeObject.getCharacterId());
         if (placeObject.name != null) name += "_" + placeObject.name;
         if (parent != null && parent.name != null) name += "_" + parent.name;
 
