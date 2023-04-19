@@ -68,6 +68,7 @@ public class GodotWriter {
 
         animationProperties.add(new AbstractMap.SimpleEntry<>("resource_name", String.format("\"%s\"", animationName)));
         animationProperties.add(new AbstractMap.SimpleEntry<>("length", godotWriterAnimation.getLength().toString()));
+        animationProperties.add(new AbstractMap.SimpleEntry<>("loop_mode", "1"));
         animationProperties.add(new AbstractMap.SimpleEntry<>("step", godotWriterAnimation.getStep().toString()));
 
         for (int i = 0; i < godotWriterAnimation.getTracks().size(); i++) {

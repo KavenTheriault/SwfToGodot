@@ -124,7 +124,8 @@ public class Main {
                     groupCenter = GeoUtils.centerRect(GeoUtils.mergeRect(childrenImagesRect));
                 }
 
-                var godotWriteGroup = new GodotWriterGroup(tagTreeItem.getTag().name, swfPositionToGodotPosition(groupCenter));
+                var nodeName = getPlaceObjectSpriteName(tagTreeItem);
+                var godotWriteGroup = new GodotWriterGroup(nodeName, swfPositionToGodotPosition(groupCenter));
                 var writerItems = buildGodotWriterItems(sprite, tagTreeItem.getChildren(), exportSpriteImages, containerFolderName, spriteNameToAddShader, groupCenter);
                 godotWriteGroup.getNodes().addAll(writerItems.values());
 
@@ -164,7 +165,9 @@ public class Main {
 
                     var translateX = twipToPixel((currentMatrix.translateX - originMatrix.translateX) * ZOOM);
                     var translateY = twipToPixel((currentMatrix.translateY - originMatrix.translateY) * ZOOM);
-                    positions.add(new Point2D.Double(translateX, translateY));
+                    var translation = Matrix.getTranslateInstance(translateX, translateY);
+                    var translatedPoint = translation.transform(originPosition.x, originPosition.y);
+                    positions.add(new Point2D.Double(translatedPoint.x, translatedPoint.y));
 
                     var rotateSkew0 = currentMatrix.rotateSkew0 - originMatrix.rotateSkew0;
                     var rotateSkew1 = currentMatrix.rotateSkew1 - originMatrix.rotateSkew1;
@@ -177,9 +180,10 @@ public class Main {
                 }
             }
 
-            tracks.add(new GodotWriterAnimationTrack(firstFrameTag.getTag().name, "position", positions, null));
-            tracks.add(new GodotWriterAnimationTrack(firstFrameTag.getTag().name, "scale", scales, null));
-            tracks.add(new GodotWriterAnimationTrack(firstFrameTag.getTag().name, "rotation", null, rotations));
+            var nodeName = getPlaceObjectSpriteName(firstFrameTag);
+            tracks.add(new GodotWriterAnimationTrack(nodeName, "position", positions, null));
+            tracks.add(new GodotWriterAnimationTrack(nodeName, "scale", scales, null));
+            tracks.add(new GodotWriterAnimationTrack(nodeName, "rotation", null, rotations));
         }
 
         if (tracks.size() > 0) {
@@ -202,7 +206,7 @@ public class Main {
                 shouldAddShader ? new ShaderOption(COLOR_SHADER_RESOURCE_PATH, COLOR_SHADER_PARAMETER) : null);
     }
 
-    static ExportImageResult exportPlaceObjectImage(DefineSpriteTag sprite, TagTreeItem tagTreeItem, String folderPath) {
+    static String getPlaceObjectSpriteName(TagTreeItem tagTreeItem) {
         var placeObject = tagTreeItem.getTag();
         var parent = tagTreeItem.getParent();
 
@@ -210,6 +214,11 @@ public class Main {
         if (placeObject.name != null) name += "_" + placeObject.name;
         if (parent != null && parent.name != null) name += "_" + parent.name;
 
+        return name;
+    }
+
+    static ExportImageResult exportPlaceObjectImage(DefineSpriteTag sprite, TagTreeItem tagTreeItem, String folderPath) {
+        var name = getPlaceObjectSpriteName(tagTreeItem);
         var fileName = String.format("%s.png", name);
         var childImagePath = String.format("%s\\%s", folderPath, fileName);
 
