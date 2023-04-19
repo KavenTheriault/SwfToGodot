@@ -38,23 +38,26 @@ public class Main {
         try (FileInputStream fis = new FileInputStream(SWF_FILE_PATH)) {
             SWF swf = new SWF(fis, true);
 
-//            int[] headSpriteIds = {860, 883, 865, 828, 843, 880, 818, 833, 855, 870, 813, 838, 888, 808, 875, 848, 823, 893, 904, 911};
-//            int[] bodySpriteIds = {605, 621, 631, 650, 673, 627, 642, 658, 677, 615, 666, 609, 648, 662, 668, 654, 635, 681, 900, 907};
-            int[] pantsIds = {731};
+            int[] headSpriteIds = {861, 884, 866, 829, 844, 881, 819, 834, 856, 871, 814, 839, 889, 809, 876, 849, 824, 894, 905, 912};
+            int[] bodySpriteIds = {605, 621, 631, 650, 673, 627, 642, 658, 677, 615, 666, 609, 648, 662, 668, 654, 635, 681, 900, 907};
+            int[] legsSpriteIds = {768, 689, 774, 780, 737, 724, 757, 764, 753, 745, 784, 731, 800, 715, 706, 698, 804, 898, 274};
 
-//            for (int headSpriteId : headSpriteIds) {
-//                generateSpriteScene(swf, headSpriteId, "heads", "hair");
-//            }
-//
-//            for (int bodySpriteId : bodySpriteIds) {
-//                generateSpriteScene(swf, bodySpriteId, "bodies", "shirt");
-//            }
-
-            for (int pantsId : pantsIds) {
-                generateSpriteScene(swf, pantsId, "pants", "pant");
+            System.out.println("Exporting heads");
+            for (int headSpriteId : headSpriteIds) {
+                generateSpriteScene(swf, headSpriteId, "heads", "hair");
             }
 
-            System.out.println("OK");
+            System.out.println("Exporting bodies");
+            for (int bodySpriteId : bodySpriteIds) {
+                generateSpriteScene(swf, bodySpriteId, "bodies", "shirt");
+            }
+
+            System.out.println("Exporting legs");
+            for (int legsSpriteId : legsSpriteIds) {
+                generateSpriteScene(swf, legsSpriteId, "legs", "pant");
+            }
+
+            System.out.println("Done");
         } catch (SwfOpenException ex) {
             System.out.println("ERROR: Invalid SWF file");
         } catch (IOException ex) {
@@ -88,6 +91,9 @@ public class Main {
 
         var allTagTreeItems = getTagTreeItems(sprite, false);
         var animation = buildAnimation(sprite, allTagTreeItems, godotWriteItems);
+
+        var sceneResourcePath = String.format("res://%s/%s/%s.tscn", containerFolderName, spriteId, spriteId);
+        System.out.println(sceneResourcePath);
 
         godotFileWriter.writeScene(spriteFolderPath, Integer.toString(spriteId), godotWriteItems.values(), animation);
     }
@@ -187,9 +193,11 @@ public class Main {
     static GodotWriterSprite buildGodotWriterSprite(ExportImageResult exportImageResult, int spriteId, String containerFolderName, String spriteNameToAddShader, Point2D.Double parentCenter) {
         var translation = getTranslationNeededInGodot(exportImageResult.getExportRect(), parentCenter);
         var shouldAddShader = exportImageResult.getName() != null && exportImageResult.getName().contains(spriteNameToAddShader);
+        var resourcePath = String.format("res://%s/%s/%s", containerFolderName, spriteId, exportImageResult.getFileName());
+
         return new GodotWriterSprite(
                 exportImageResult.getName(),
-                String.format("res://%s/%s/%s", containerFolderName, spriteId, exportImageResult.getFileName()),
+                resourcePath,
                 translation,
                 shouldAddShader ? new ShaderOption(COLOR_SHADER_RESOURCE_PATH, COLOR_SHADER_PARAMETER) : null);
     }

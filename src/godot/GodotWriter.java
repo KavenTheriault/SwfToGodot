@@ -44,7 +44,9 @@ public class GodotWriter {
         writeItems(writerItems, ".");
         if (animation != null) writeAnimation(animation);
         generateLines();
-        writeFile(String.format("%s\\%s.tscn", folderPath, name));
+
+        var sceneFilePath = String.format("%s\\%s.tscn", folderPath, name);
+        writeFile(sceneFilePath);
     }
 
     private void writeItems(Collection<GodotWriterNode> writerNodes, String parent) {
